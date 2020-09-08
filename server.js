@@ -1,12 +1,12 @@
-const next = require('next');
-const express = require('express');
-const cookieParser = require('cookie-parser');
-const uuidv4 = require('uuid/v4');
-const { getSession } = require('next-auth/client');
-const routesConfig = require('./routes.config');
+const next = require("next");
+const express = require("express");
+const cookieParser = require("cookie-parser");
+const uuidv4 = require("uuid/v4");
+const { getSession } = require("next-auth/client");
+const routesConfig = require("./routes.config");
 
 const port = parseInt(process.env.PORT, 10) || 3000;
-const dev = process.env.NODE_ENV !== 'production';
+const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
 const handler = app.getRequestHandler();
 
@@ -14,7 +14,7 @@ function sessionCookie(req, res, next) {
   const htmlPage =
     !req.path.match(/^\/(_next|static)/) &&
     !req.path.match(/\.(js|map)$/) &&
-    req.accepts('text/html', 'text/css', 'image/png') === 'text/html';
+    req.accepts("text/html", "text/css", "image/png") === "text/html";
 
   if (!htmlPage) {
     next();
@@ -23,18 +23,19 @@ function sessionCookie(req, res, next) {
 
   if (!req.cookies.sid || req.cookies.sid.length === 0) {
     req.cookies.sid = uuidv4();
-    res.cookie('sid', req.cookies.sid);
+    res.cookie("sid", req.cookies.sid);
   }
 
   next();
 }
 
 async function checkForNextAuthSession(req, res, next) {
-  const routeRequiresSession = routesConfig.requiresSession[req.path];
+  const routeRequiresSession =
+    !req.query.disableAuth && routesConfig.requiresSession[req.path];
   if (routeRequiresSession) {
     req.session = await getSession({ req });
     if (!req.session) {
-      res.redirect(303, '/api/auth/signin');
+      res.redirect(303, "/api/auth/signin");
       return;
     }
   }
@@ -42,13 +43,13 @@ async function checkForNextAuthSession(req, res, next) {
   next();
 }
 
-const sourcemapsForSentryOnly = token => (req, res, next) => {
+const sourcemapsForSentryOnly = (token) => (req, res, next) => {
   // In production we only want to serve source maps for Sentry
-  if (!dev && !!token && req.headers['x-sentry-token'] !== token) {
+  if (!dev && !!token && req.headers["x-sentry-token"] !== token) {
     res
       .status(401)
       .send(
-        'Authentication access token is required to access the source map.'
+        "Authentication access token is required to access the source map."
       );
     return;
   }
@@ -57,7 +58,7 @@ const sourcemapsForSentryOnly = token => (req, res, next) => {
 
 app.prepare().then(() => {
   // app.buildId is only available after app.prepare(), hence why we setup here
-  const { Sentry } = require('./src/utils/sentry')(app.buildId);
+  const { Sentry } = require("./src/utils/sentry")(app.buildId);
 
   express()
     // This attaches request information to Sentry errors
@@ -72,7 +73,7 @@ app.prepare().then(() => {
     .use(handler)
     // This handles errors if they are thrown before reaching the app
     .use(Sentry.Handlers.errorHandler())
-    .listen(port, err => {
+    .listen(port, (err) => {
       if (err) {
         throw err;
       }
